@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Docházkový Systém Pro | Evidence pracovní doby</title>
+    <style>
+        :root {
+            --primary: #1e3a8a;
+            --primary-hover: #1d4ed8;
+            --bg: #f1f5f9;
+            --card: #ffffff;
+            --text: #0f172a;
+            --muted: #64748b;
+            --border: #e2e8f0;
+            --success: #16a34a;
+            --warning: #d97706;
+            --danger: #dc2626;
+        }
+        * { box-sizing: border-box; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+        body { margin: 0; background: var(--bg); color: var(--text); }
+        header {
+            background: var(--primary); color: white; padding: 1rem 2rem;
+            display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        header h1 { margin: 0; font-size: 1.35rem; font-weight: 600; }
+        #clock { font-size: 1.1rem; font-variant-numeric: tabular-nums; background: rgba(255,255,255,0.15); padding: 0.4rem 0.8rem; border-radius: 6px; }
+        .container { max-width: 1200px; margin: 2rem auto; padding: 0 1rem; display: grid; grid-template-columns: 350px 1fr; gap: 1.5rem; }
+        @media (max-width: 900px) { .container { grid-template-columns: 1fr; } }
+        .card { background: var(--card); border-radius: 10px; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid var(--border); margin-bottom: 1.5rem; }
+        h2 { margin-top: 0; font-size: 1.1rem; color: var(--primary); border-bottom: 2px solid var(--bg); padding-bottom: 0.6rem; }
+        label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.3rem; color: var(--muted); }
+        input, select { width: 100%; padding: 0.6rem; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 1rem; font-size: 0.95rem; }
+        input:focus, select:focus { outline: none; border-color: var(--primary); }
+        .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+        button {
+            padding: 0.7rem 1rem; border: none; border-radius: 6px; font-weight: 600; cursor: pointer;
+            transition: all 0.15s; font-size: 0.9rem; color: white;
+        }
+        button:hover { opacity: 0.92; transform: translateY(-1px); }
+        .btn-in { background: var(--success); }
+        .btn-out { background: var(--danger); }
+        .btn-break-start { background: var(--warning); }
+        .btn-break-end { background: #0284c7; }
+        .btn-primary { background: var(--primary); width: 100%; }
+        .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); padding: 0.45rem 0.8rem; font-size: 0.85rem; }
+        .btn-outline:hover { background: var(--bg); }
+        .btn-sm-del { background: #fee2e2; color: var(--danger); padding: 0.25rem 0.5rem; font-size: 0.8rem; }
+        .stats-bar { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+        .stat-box { background: var(--card); padding: 1rem; border-radius: 8px; border: 1px solid var(--border); text-align: center; }
+        .stat-val { font-size: 1.5rem; font-weight: 700; color: var(--primary); }
+        .stat-lbl { font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        th, td { text-align: left; padding: 0.75rem 0.6rem; border-bottom: 1px solid var(--border); }
+        th { background: #f8fafc; font-weight: 600; color: var(--muted); }
+        .badge { padding: 0.2rem 0.55rem; border-radius: 99px; font-size: 0.78rem; font-weight: 600; }
+        .b-in { background: #dcfce7; color: #166534; }
+        .b-out { background: #fee2e2; color: #991b1b; }
+        .b-break { background: #fef3c7; color: #92400e; }
+        .toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; }
+        .toolbar-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+        .empty-msg { text-align: center; color: var(--muted); padding: 2rem; }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>⏱️ Firemní Docházkový Systém (v1.0)</h1>
+    <div id="clock">--:--:--</div>
+</header>
+
+<div class="container">
+    <!-- Levý panel: Terminál a správa zaměstnanců -->
+    <div>
+        <div class="card">
+            <h2>1. Docházkový terminál</h2>
+            <label for="empSelect">Vyberte zaměstnance:</label>
+            <select id="empSelect"></select>
+
+            <label for="noteInput">Poznámka (volitelné - např. Home Office, lékař):</label>
+            <input type="text" id="noteInput" placeholder="Např. Práce z domova / Služební cesta">
+
+            <div class="btn-grid">
+                <button class="btn-in" onclick="recordAction('Příchod')">▶ Příchod</button>
+                <button class="btn-out" onclick="recordAction('Odchod')">⏹ Odchod</button>
+                <button class="btn-break-start" onclick="recordAction('Začátek pauzy')">☕ Pauza - start</button>
+                <button class="btn-break-end" onclick="recordAction('Konec pauzy')">🔄 Pauza - konec</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>2. Správa zaměstnanců</h2>
+            <label for="newEmpName">Jméno a příjmení:</label>
+            <input type="text" id="newEmpName" placeholder="Např. Jan Novák">
+            <label for="newEmpRole">Pozice / Oddělení:</label>
+            <input type="text" id="newEmpRole" placeholder="Např. Projektový manažer">
+            <button class="btn-primary" onclick="addEmployee()">+ Přidat zaměstnance</button>
+            <div id="empList" style="margin-top: 1rem; font-size: 0.85rem;"></div>
+        </div>
+    </div>
+
+    <!-- Pravý panel: Přehledy, statistiky a záznamy -->
+    <div>
+        <div class="stats-bar">
+            <div class="stat-box">
+                <div class="stat-val" id="statActive">0</div>
+                <div class="stat-lbl">Aktuálně v práci</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-val" id="statTodayCount">0</div>
+                <div class="stat-lbl">Dnešních záznamů</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-val" id="statTotalHours">0.0 h</div>
+                <div class="stat-lbl">Odpracováno dnes (celkem)</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="toolbar">
+                <h2 style="border:none; margin:0; padding:0;">3. Evidence docházky a výkazy</h2>
+                <div class="toolbar-actions">
+                    <button class="btn-outline" onclick="exportCSV()">📥 Export CSV (Excel)</button>
+                    <button class="btn-outline" onclick="exportJSON()">💾 Záloha dat (JSON)</button>
+                    <button class="btn-outline" onclick="document.getElementById('importFile').click()">📂 Obnovit zálohu</button>
+                    <input type="file" id="importFile" accept=".json" style="display:none" onchange="importJSON(event)">
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 0.8rem; margin-bottom: 1rem;">
+                <input type="date" id="filterDate" onchange="renderLogs()" style="margin:0; max-width: 180px;">
+                <select id="filterEmp" onchange="renderLogs()" style="margin:0; max-width: 220px;">
+                    <option value="ALL">Všichni zaměstnanci</option>
+                </select>
+                <button class="btn-outline" onclick="resetFilters()">Zobrazit vše</button>
+            </div>
+
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Datum</th>
+                            <th>Čas</th>
+                            <th>Zaměstnanec</th>
+                            <th>Událost</th>
+                            <th>Poznámka</th>
+                            <th>Akce</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Inicializace výchozích dat v LocalStorage
+    const STORAGE_EMP = 'dochazka_employees_v1';
+    const STORAGE_LOGS = 'dochazka_logs_v1';
+
+    let employees = JSON.parse(localStorage.getItem(STORAGE_EMP)) || [
+        { id: 'EMP-001', name: 'Jan Novák', role: 'Vývojář' },
+        { id: 'EMP-002', name: 'Petra Svobodová', role: 'Projektová manažerka' }
+    ];
+
+    let logs = JSON.parse(localStorage.getItem(STORAGE_LOGS)) || [];
+
+    function saveData() {
+        localStorage.setItem(STORAGE_EMP, JSON.stringify(employees));
+        localStorage.setItem(STORAGE_LOGS, JSON.stringify(logs));
+    }
+
+    // Živé hodiny
+    function updateClock() {
+        const now = new Date();
+        document.getElementById('clock').textContent = now.toLocaleDateString('cs-CZ') + ' | ' + now.toLocaleTimeString('cs-CZ');
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // Vykreslení zaměstnanců
+    function renderEmployees() {
+        const select = document.getElementById('empSelect');
+        const filterSelect = document.getElementById('filterEmp');
+        const listDiv = document.getElementById('empList');
+
+        select.innerHTML = '';
+        filterSelect.innerHTML = '<option value="ALL">Všichni zaměstnanci</option>';
+        listDiv.innerHTML = '';
+
+        employees.forEach((emp, idx) => {
+            const opt = document.createElement('option');
+            opt.value = emp.id;
+            opt.textContent = `${emp.name} (${emp.role})`;
+            select.appendChild(opt);
+
+            const fOpt = opt.cloneNode(true);
+            filterSelect.appendChild(fOpt);
+
+            const row = document.createElement('div');
+            row.style.cssText = 'display:flex; justify-content:space-between; align-items:center; padding:0.35rem 0; border-bottom:1px solid #f1f5f9;';
+            row.innerHTML = `<span><strong>${emp.name}</strong> <span style="color:#64748b">(${emp.role})</span></span>
+                             <button class="btn-sm-del" onclick="removeEmployee(${idx})">Smazat</button>`;
+            listDiv.appendChild(row);
+        });
+    }
+
+    function addEmployee() {
+        const name = document.getElementById('newEmpName').value.trim();
+        const role = document.getElementById('newEmpRole').value.trim() || 'Zaměstnanec';
+        if (!name) return alert('Zadejte prosím jméno zaměstnance.');
+
+        employees.push({
+            id: 'EMP-' + Date.now().toString().slice(-4),
+            name: name,
+            role: role
+        });
+        document.getElementById('newEmpName').value = '';
+        document.getElementById('newEmpRole').value = '';
+        saveData();
+        renderEmployees();
+    }
+
+    function removeEmployee(index) {
+        if (!confirm('Opravdu odstranit tohoto zaměstnance ze seznamu? Historie záznamů zůstane zachována.')) return;
+        employees.splice(index, 1);
+        saveData();
+        renderEmployees();
+    }
+
+    // Záznam docházky
+    function recordAction(type) {
+        const empId = document.getElementById('empSelect').value;
+        const emp = employees.find(e => e.id === empId);
+        if (!emp) return alert('Nejprve vyberte nebo přidejte zaměstnance.');
+
+        const note = document.getElementById('noteInput').value.trim();
+        const now = new Date();
+        const isoDate = now.toISOString().split('T')[0];
+        const timeStr = now.toTimeString().split(' ')[0];
+
+        logs.unshift({
+            id: Date.now(),
+            date: isoDate,
+            time: timeStr,
+            timestamp: now.getTime(),
+            empId: emp.id,
+            empName: emp.name,
+            type: type,
+            note: note
+        });
+
+        document.getElementById('noteInput').value = '';
+        saveData();
+        renderLogs();
+    }
+
+    function deleteLog(id) {
+        if (!confirm('Smazat tento záznam docházky?')) return;
+        logs = logs.filter(l => l.id !== id);
+        saveData();
+        renderLogs();
+    }
+
+    function resetFilters() {
+        document.getElementById('filterDate').value = '';
+        document.getElementById('filterEmp').value = 'ALL';
+        renderLogs();
+    }
+
+    // Výpočet statistik a tabulky
+    function renderLogs() {
+        const tbody = document.getElementById('logTableBody');
+        const filterDate = document.getElementById('filterDate').value;
+        const filterEmp = document.getElementById('filterEmp').value;
+
+        const filtered = logs.filter(l => {
+            if (filterDate && l.date !== filterDate) return false;
+            if (filterEmp !== 'ALL' && l.empId !== filterEmp) return false;
+            return true;
+        });
+
+        tbody.innerHTML = '';
+        if (filtered.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="empty-msg">Žádné záznamy neodpovídají filtru.</td></tr>';
+        } else {
+            filtered.forEach(l => {
+                let badgeClass = 'b-in';
+                if (l.type === 'Odchod') badgeClass = 'b-out';
+                if (l.type.includes('pauzy')) badgeClass = 'b-break';
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${l.date}</td>
+                    <td><strong>${l.time}</strong></td>
+                    <td>${l.empName}</td>
+                    <td><span class="badge ${badgeClass}">${l.type}</span></td>
+                    <td>${l.note || '-'}</td>
+                    <td><button class="btn-sm-del" onclick="deleteLog(${l.id})">✕</button></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+        updateStats();
+    }
+
+    function updateStats() {
+        const today = new Date().toISOString().split('T')[0];
+        const todayLogs = logs.filter(l => l.date === today).sort((a, b) => a.timestamp - b.timestamp);
+
+        document.getElementById('statTodayCount').textContent = todayLogs.length;
+
+        // Zjištění aktivních zaměstnanců a odpracovaných hodin dnes
+        const statusByEmp = {};
+        const lastInByEmp = {};
+        let totalMs = 0;
+
+        todayLogs.forEach(l => {
+            if (l.type === 'Příchod' || l.type === 'Konec pauzy') {
+                statusByEmp[l.empId] = 'IN';
+                lastInByEmp[l.empId] = l.timestamp;
+            } else if (l.type === 'Odchod' || l.type === 'Začátek pauzy') {
+                statusByEmp[l.empId] = 'OUT';
+                if (lastInByEmp[l.empId]) {
+                    totalMs += (l.timestamp - lastInByEmp[l.empId]);
+                    delete lastInByEmp[l.empId];
+                }
+            }
+        });
+
+        const activeCount = Object.values(statusByEmp).filter(s => s === 'IN').length;
+        document.getElementById('statActive').textContent = activeCount;
+        document.getElementById('statTotalHours').textContent = (totalMs / 3600000).toFixed(2) + ' h';
+    }
+
+    // Export CSV s podporou českých znaků (BOM UTF-8)
+    function exportCSV() {
+        let csv = '\uFEFFDatum;Čas;ID Zaměstnance;Jméno;Událost;Poznámka\n';
+        logs.forEach(l => {
+            csv += `${l.date};${l.time};${l.empId};"${l.empName}";"${l.type}";"${(l.note || '').replace(/"/g, '""')}"\n`;
+        });
+        downloadFile(csv, `dochazka_export_${new Date().toISOString().slice(0,10)}.csv`, 'text/csv;charset=utf-8;');
+    }
+
+    // Záloha JSON
+    function exportJSON() {
+        const data = JSON.stringify({ employees, logs }, null, 2);
+        downloadFile(data, `dochazka_zaloha_${new Date().toISOString().slice(0,10)}.json`, 'application/json');
+    }
+
+    function importJSON(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const parsed = JSON.parse(e.target.result);
+                if (parsed.employees && parsed.logs) {
+                    employees = parsed.employees;
+                    logs = parsed.logs;
+                    saveData();
+                    renderEmployees();
+                    renderLogs();
+                    alert('Data byla úspěšně obnovena.');
+                } else {
+                    alert('Neplatný formát záložního souboru.');
+                }
+            } catch (err) {
+                alert('Chyba při čtení souboru: ' + err.message);
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    function downloadFile(content, filename, mimeType) {
+        const blob = new Blob([content], { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    // Start aplikace
+    renderEmployees();
+    renderLogs();
+</script>
+</body>
+</html>
